@@ -83,10 +83,12 @@ int main( int argc, char **argv )
 			goal.right_post.y = MatrixGoal(i,3);
 			goal.center_direction.x = MatrixGoal(i,4);
 			goal.center_direction.y = MatrixGoal(i,5);
-			goal.confidence = MatrixGoal(i,6);;
-		}
+			goal.confidence = MatrixGoal(i,6);
+//			pubGoalRelative.publish(goal);
+//		}
 		
-		for(int i = 0; i < MatrixObs.rows(); i++)
+//		for(int i = 0; i < MatrixObs.rows(); i++)
+		if(i<MatrixObs.rows())
 		{
 			obs.playerNumber = -1;
 			obs.position.x = MatrixObs(i,0);//Point
@@ -96,26 +98,30 @@ int main( int argc, char **argv )
 			obs.color = MatrixObs(i,4);
 			obs.confidence = MatrixObs(i,5);
 			Obs.push_back(obs);
+			obstacle.obstacles = Obs;
+//			pubObsRelative.publish(obstacle);
 		}
 		
-		
-		for(int j = 0; j < 6; j++ )	
-		{
-			for(int i = 0; i < 6; i++ )
-			{	
-				linesegment.start.x = MatrixSegstart(i,0);
-				linesegment.start.y = MatrixSegstart(i,1);
-				linesegment.end.x = MatrixSegend(i,0);
-				linesegment.end.y = MatrixSegend(i,1);
-				linesegment.confidence = 0;
-				lineSegment.push_back(linesegment);
+		if(i<6)
+		{	for(int j = 0; j < 6; j++ )	
+			{
+				for(int k = 0; k < 6; k++ )
+				{	
+					linesegment.start.x = MatrixSegstart(k,0);
+					linesegment.start.y = MatrixSegstart(k,1);
+					linesegment.end.x = MatrixSegend(k,0);
+					linesegment.end.y = MatrixSegend(k,1);
+					linesegment.confidence = 0;
+					lineSegment.push_back(linesegment);
+				}
+				lineinter.segments = lineSegment;
+				lineinter.type = 0;
+				lineinter.confidence = 0;
 			}
-			lineinter.segments = lineSegment;
-			lineinter.type = 0;
-			lineinter.confidence = 0;
+			lineInter.push_back(lineinter);
 		}
-		lineInter.push_back(lineinter);
-		for(int i = 0; i < 6; i++ )
+//		for(int i = 0; i < 6; i++ )
+		if(i<6)
 		{
 			linecircle.left.x = MatrixCircle(i,0);
 			linecircle.left.y = MatrixCircle(i,1);
@@ -134,6 +140,7 @@ int main( int argc, char **argv )
 		pubObsRelative.publish(obstacle);
 		pubLineInformationRelative.publish(line);
 		loop_rate.sleep();
+		}
 	}
 }
                         /*
