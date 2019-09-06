@@ -5,6 +5,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>//quick walking node 
 #include "humanoid_league_msgs/TeamData.h"
+#include "humanoid_league_msgs/GameState.h"
 #include "humanoid_league_msgs/ObstaclesRelative.h"
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
@@ -25,7 +26,9 @@ int main( int argc, char **argv )
 	ros::Publisher pubWlakOdometry = n.advertise<nav_msgs::Odometry>("walk_odometry",10);
 	ros::Publisher pubVisualOdometry = n.advertise<nav_msgs::Odometry>("visual_odometry",10);
 	ros::Publisher pubPointCloud2 = n.advertise<sensor_msgs::PointCloud2>("line_relative_pc",10);
+	ros::Publisher pubGameState = n.advertise<humanoid_league_msgs::GameState>("gamestate",10);
 //	ros::Publisher pubVisualCompass = n.advertise<>();
+//	ros::Publisher pubBallRelative = n.advertise<humanoid_league_msgs::BallRelative>("ball_relative",10);
 
 	Matrix<float, 24, 7> MatrixGoal;
 	Matrix<float,  9, 6> MatrixObs;
@@ -68,7 +71,11 @@ int main( int argc, char **argv )
 	humanoid_league_msgs::LineCircleRelative linecircle;
 	std::vector<humanoid_league_msgs::LineCircleRelative> lineCircle;
 	humanoid_league_msgs::LineInformationRelative line;
-	
+	humanoid_league_msgs::GameState gamestate;
+	int timeCounter = 30;
+	bool firsthalf = true; 
+	int durationHalfGame = 60;
+
 	ros::Rate loop_rate(10);
 	while(ros::ok())
 	{
@@ -84,62 +91,89 @@ int main( int argc, char **argv )
 			goal.center_direction.x = MatrixGoal(i,4);
 			goal.center_direction.y = MatrixGoal(i,5);
 			goal.confidence = MatrixGoal(i,6);
-//			pubGoalRelative.publish(goal);
-//		}
-		
-//		for(int i = 0; i < MatrixObs.rows(); i++)
-		if(i<MatrixObs.rows())
-		{
-			obs.playerNumber = -1;
-			obs.position.x = MatrixObs(i,0);//Point
-			obs.position.y = MatrixObs(i,1);
-			obs.width = MatrixObs(i,2);
-			obs.height = MatrixObs(i,3);
-			obs.color = MatrixObs(i,4);
-			obs.confidence = MatrixObs(i,5);
-			Obs.push_back(obs);
-			obstacle.obstacles = Obs;
-//			pubObsRelative.publish(obstacle);
-		}
-		
-		if(i<6)
-		{	for(int j = 0; j < 6; j++ )	
+
+			if(i<MatrixObs.rows())
 			{
-				for(int k = 0; k < 6; k++ )
-				{	
-					linesegment.start.x = MatrixSegstart(k,0);
-					linesegment.start.y = MatrixSegstart(k,1);
-					linesegment.end.x = MatrixSegend(k,0);
-					linesegment.end.y = MatrixSegend(k,1);
-					linesegment.confidence = 0;
-					lineSegment.push_back(linesegment);
-				}
-				lineinter.segments = lineSegment;
-				lineinter.type = 0;
-				lineinter.confidence = 0;
+				obs.playerNumber = -1;
+				obs.position.x = MatrixObs(i,0);//Point
+				obs.position.y = MatrixObs(i,1);
+				obs.width = MatrixObs(i,2);
+				obs.height = MatrixObs(i,3);
+				obs.color = MatrixObs(i,4);
+				obs.confidence = MatrixObs(i,5);
+				Obs.push_back(obs);
+				obstacle.header.stamp = ros::Time::now();
+				obstacle.header.frame_id = "base_footprint";
+				obstacle.obstacles = Obs;
 			}
-			lineInter.push_back(lineinter);
-		}
-//		for(int i = 0; i < 6; i++ )
-		if(i<6)
-		{
-			linecircle.left.x = MatrixCircle(i,0);
-			linecircle.left.y = MatrixCircle(i,1);
-			linecircle.middle.x = MatrixCircle(i,2);
-			linecircle.middle.y = MatrixCircle(i,3);
-			linecircle.right.x = MatrixCircle(i,4);
-			linecircle.right.y = MatrixCircle(i,5);
-			linecircle.confidence = 0;
-			lineCircle.push_back(linecircle);
-		}	
-		line.intersections = lineInter;
-		line.segments = lineSegment;
-		line.circles = lineCircle;
-		obstacle.obstacles = Obs;
-		pubGoalRelative.publish(goal);
-		pubObsRelative.publish(obstacle);
-		pubLineInformationRelative.publish(line);
-		loop_rate.sleep();
+		
+			if(i<6)
+			{	
+				for(int j = 0; j < 6; j++ )	
+				{
+					for(int k = 0; k < 6; k++ )
+					{	
+						linesegment.start.x = MatrixSegstart(k,0);
+						linesegment.start.y = MatrixSegstart(k,1);
+						linesegment.end.x = MatrixSegend(k,0);
+						linesegment.end.y = MatrixSegend(k,1);
+						linesegment.confidence = 1;
+						lineSegment.push_back(linesegment);
+					}
+					lineinter.segments = lineSegment;
+					lineinter.type = 0;
+					lineinter.confidence = 1;
+				}
+				lineInter.push_back(lineinter);
+			}
+
+			if(i<6)
+			{
+				linecircle.left.x = MatrixCircle(i,0);
+				linecircle.left.y = MatrixCircle(i,1);
+				linecircle.middle.x = MatrixCircle(i,2);
+				linecircle.middle.y = MatrixCircle(i,3);
+				linecircle.right.x = MatrixCircle(i,4);
+				linecircle.right.y = MatrixCircle(i,5);
+				linecircle.confidence = 1;
+				lineCircle.push_back(linecircle);
+			}
+		
+			
+			gamestate.header.frame_id = i;
+			gamestate.header.stamp = ros::Time::now();
+			gamestate.secondaryState = 0;
+			gamestate.secondsTillUnpenalized = timeCounter;
+        		// Penalty boolean
+        		gamestate.penalized = timeCounter > 0	;
+        		// Sets halftime and rest secs
+        		gamestate.firstHalf = firsthalf;
+        		gamestate.secondsRemaining = durationHalfGame;
+        		// Sets Score
+        		gamestate.ownScore = 7;
+        		gamestate.rivalScore = 1;
+        		// team colors
+        		gamestate.teamColor = 1;// magenta	
+			timeCounter -= 1;
+       			if(timeCounter < 0)
+			{
+				timeCounter = 0;
+			}
+      	 	 	durationHalfGame -= 1;
+       		 	if(durationHalfGame == 0)
+			{
+				durationHalfGame = 60;
+            			firsthalf = false;
+			}
+			line.intersections = lineInter;
+			line.segments = lineSegment;
+			line.circles = lineCircle;
+			obstacle.obstacles = Obs;
+			pubGoalRelative.publish(goal);
+			pubObsRelative.publish(obstacle);
+			pubLineInformationRelative.publish(line);
+			pubGameState.publish(gamestate);
+			loop_rate.sleep();
 		}
 	}
 }
@@ -166,7 +200,7 @@ int main( int argc, char **argv )
                         walkodom.string_child_frame_id = ;
                         walkodom.pose = ;//geometry_msgs/PoseWithCovariance
                         walkodom.twist = ;//geometry_msgs/TwistWithCovariance
-                        pubWlakOdometry.publish(walkdodm);
+                        pubWlakOdometry.publish(walkodom);
 
                         sensor_msgs::PointCloud2 line;
                         line.header.seq = ;
